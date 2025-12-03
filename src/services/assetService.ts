@@ -7,13 +7,12 @@ import {
   Timestamp,
   doc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  where
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export type AssetStatus = "Active" | "Maintenance" | "Retired" | "Available";
-
-export type RepairingStatus = "Not Applicable" | "Pending" | "In Progress" | "Completed";
 
 export interface AssetInput {
   name: string;
@@ -23,9 +22,7 @@ export interface AssetInput {
   assignedTo: string;
   location: string;
   status: AssetStatus;
-  vendor: string;
   description?: string;
-  repairingStatus?: RepairingStatus;
   repairingDescription?: string;
   extraItems: boolean;
   extraItemsDescription?: string;
@@ -36,13 +33,13 @@ export interface AssetData extends AssetInput {
   purchaseDate?: string;
   warrantyExpiry?: string;
   description?: string;
-  repairingStatus?: RepairingStatus;
   repairingDescription?: string;
   extraItems: boolean;
   extraItemsDescription?: string;
 }
 
 const COLLECTION_NAME = "assets";
+const MEMBERS_COLLECTION = "members";
 
 export const addAsset = async (assetData: AssetInput): Promise<string> => {
   try {
@@ -113,9 +110,7 @@ export const getAssets = async (): Promise<AssetData[]> => {
         assignedTo: data.assignedTo,
         location: data.location,
         status: data.status,
-        vendor: data.vendor,
         description: data.description,
-        repairingStatus: data.repairingStatus,
         repairingDescription: data.repairingDescription,
         extraItems: data.extraItems || false,
         extraItemsDescription: data.extraItemsDescription
@@ -123,6 +118,47 @@ export const getAssets = async (): Promise<AssetData[]> => {
     });
   } catch (error) {
     console.error("Error fetching assets:", error);
+    throw error;
+  }
+};
+
+export const addMember = async (name: string): Promise<string> => {
+  try {
+    const docData = {
+      name: name.trim(),
+      createdAt: Timestamp.now(),
+    };
+    const docRef = await addDoc(collection(db, MEMBERS_COLLECTION), docData);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error adding member:", error);
+    throw error;
+  }
+};
+
+export const getMembers = async (): Promise<string[]> => {
+  try {
+    const q = query(collection(db, MEMBERS_COLLECTION), orderBy("createdAt", "asc"));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map((doc) => doc.data().name as string);
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    throw error;
+  }
+};
+
+export const deleteMember = async (name: string): Promise<void> => {
+  try {
+    const q = query(collection(db, MEMBERS_COLLECTION), where("name", "==", name));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const docRef = querySnapshot.docs[0].ref;
+      await deleteDoc(docRef);
+    }
+  } catch (error) {
+    console.error("Error deleting member:", error);
     throw error;
   }
 };

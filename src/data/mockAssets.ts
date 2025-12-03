@@ -9,7 +9,6 @@ export interface Asset {
   purchaseDate: string;
   warrantyExpiry: string;
   status: "Active" | "Maintenance" | "Retired" | "Available";
-  vendor: string;
 }
 
 export const mockAssets: Asset[] = [
@@ -23,8 +22,7 @@ export const mockAssets: Asset[] = [
     location: "New York Office - Floor 3",
     purchaseDate: "2023-01-15",
     warrantyExpiry: "2026-01-15",
-    status: "Active",
-    vendor: "Dell Technologies"
+    status: "Active"
   },
   {
     id: "AST-002",
@@ -36,8 +34,7 @@ export const mockAssets: Asset[] = [
     location: "San Francisco Office - Floor 2",
     purchaseDate: "2023-03-22",
     warrantyExpiry: "2024-03-22",
-    status: "Active",
-    vendor: "Apple Inc."
+    status: "Active"
   },
   {
     id: "AST-003",
@@ -49,8 +46,7 @@ export const mockAssets: Asset[] = [
     location: "London Office - Floor 1",
     purchaseDate: "2022-08-10",
     warrantyExpiry: "2025-08-10",
-    status: "Maintenance",
-    vendor: "HP Inc."
+    status: "Maintenance"
   },
   {
     id: "AST-004",
@@ -62,8 +58,7 @@ export const mockAssets: Asset[] = [
     location: "Toronto Office - Floor 4",
     purchaseDate: "2023-05-18",
     warrantyExpiry: "2026-05-18",
-    status: "Active",
-    vendor: "Lenovo"
+    status: "Active"
   },
   {
     id: "AST-005",
@@ -75,8 +70,7 @@ export const mockAssets: Asset[] = [
     location: "New York Office - Storage",
     purchaseDate: "2022-11-30",
     warrantyExpiry: "2025-11-30",
-    status: "Available",
-    vendor: "Dell Technologies"
+    status: "Available"
   },
   {
     id: "AST-006",
@@ -88,7 +82,6 @@ export const mockAssets: Asset[] = [
     location: "Data Center - Rack 12",
     purchaseDate: "2021-04-05",
     warrantyExpiry: "2024-04-05",
-    status: "Retired",
-    vendor: "Cisco Systems"
+    status: "Retired"
   }
 ];

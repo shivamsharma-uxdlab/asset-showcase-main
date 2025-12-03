@@ -30,10 +30,6 @@ import {
 } from "@/components/ui/table";
 import {
   Search,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -43,7 +39,12 @@ import {
 type SortField = keyof AssetData;
 type SortDirection = "asc" | "desc" | null;
 
-const ITEMS_PER_PAGE = 5;
+const truncateDescription = (description: string | undefined): string => {
+  if (!description) return "N/A";
+  const words = description.split(" ");
+  if (words.length <= 3) return description;
+  return words.slice(0, 3).join(" ") + "...";
+};
 
 export const AssetTable = () => {
   const [assets, setAssets] = useState<AssetData[]>([]);
@@ -51,7 +52,6 @@ export const AssetTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [editingAsset, setEditingAsset] = useState<AssetData | undefined>(undefined);
@@ -89,7 +89,6 @@ export const AssetTable = () => {
       setSortField(field);
       setSortDirection("asc");
     }
-    setCurrentPage(1);
   };
 
   const getSortIcon = (field: SortField) => {
@@ -102,10 +101,9 @@ export const AssetTable = () => {
   const filteredAndSortedAssets = useMemo(() => {
     let filtered = assets.filter((asset) => {
       const matchesSearch =
-        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.assignedTo.toLowerCase().includes(searchQuery.toLowerCase());
-      
+        asset.assignedTo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.status.toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === "all" || asset.status === statusFilter;
       const matchesCategory = categoryFilter === "all" || asset.category === categoryFilter;
 
@@ -126,11 +124,6 @@ export const AssetTable = () => {
     return filtered;
   }, [assets, searchQuery, statusFilter, categoryFilter, sortField, sortDirection]);
 
-  const totalPages = Math.ceil(filteredAndSortedAssets.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedAssets = filteredAndSortedAssets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const uniqueCategories = Array.from(new Set(assets.map(asset => asset.category)));
   const uniqueStatuses = Array.from(new Set(assets.map(asset => asset.status)));
 
   return (
@@ -175,11 +168,10 @@ export const AssetTable = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, serial number, or assignee..."
+            placeholder="Search by assignee or status..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              setCurrentPage(1);
             }}
             className="pl-10"
           />
@@ -187,34 +179,41 @@ export const AssetTable = () => {
         <div className="flex gap-4">
           <Select value={categoryFilter} onValueChange={(value) => {
             setCategoryFilter(value);
-            setCurrentPage(1);
           }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-172">
               <SelectItem value="all">All Categories</SelectItem>
-              {uniqueCategories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
+              <SelectItem value="Laptop">Laptop</SelectItem>
+              <SelectItem value="Desktop">Desktop</SelectItem>
+              <SelectItem value="Server">Server</SelectItem>
+              <SelectItem value="Network Device">Network Device</SelectItem>
+              <SelectItem value="Network Equipment">Network Equipment</SelectItem>
+              <SelectItem value="Peripheral">Peripheral</SelectItem>
+              <SelectItem value="Software">Software</SelectItem>
+              <SelectItem value="Keyboard">Keyboard</SelectItem>
+              <SelectItem value="Mouse">Mouse</SelectItem>
+              <SelectItem value="Headphone">Headphone</SelectItem>
+              <SelectItem value="Cable">Cable</SelectItem>
+              <SelectItem value="Phone">Phone</SelectItem>
+              <SelectItem value="Mobile Device">Mobile Device</SelectItem>
+              <SelectItem value="Printer">Printer</SelectItem>
+              <SelectItem value="Monitor">Monitor</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => {
             setStatusFilter(value);
-            setCurrentPage(1);
           }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {uniqueStatuses.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Available">Available</SelectItem>
+              <SelectItem value="Maintenance">Maintenance</SelectItem>
+              <SelectItem value="Retired">Retired</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -227,34 +226,29 @@ export const AssetTable = () => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[60px] font-semibold select-none">#</TableHead>
-                <TableHead className="font-semibold select-none">Name</TableHead>
                 <TableHead className="font-semibold select-none">Category</TableHead>
                 <TableHead className="font-semibold select-none">Model</TableHead>
-                <TableHead className="font-semibold select-none">Serial Number</TableHead>
                 <TableHead className="font-semibold select-none">Assigned To</TableHead>
-                <TableHead className="font-semibold select-none">Location</TableHead>
                 <TableHead className="font-semibold select-none">Status</TableHead>
-                <TableHead className="font-semibold select-none">Repairing Status</TableHead>
-                <TableHead className="font-semibold select-none">Vendor</TableHead>
-                <TableHead className="font-semibold select-none">E.Items</TableHead>
+                <TableHead className="font-semibold select-none">Repairing Description</TableHead>
                 <TableHead className="w-[50px] font-semibold select-none">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Loading assets...
                   </TableCell>
                 </TableRow>
-              ) : paginatedAssets.length === 0 ? (
+              ) : filteredAndSortedAssets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No assets found matching your criteria
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedAssets.map((asset, index) => (
+                filteredAndSortedAssets.map((asset, index) => (
                    <TableRow
                      key={asset.id}
                      className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -263,21 +257,16 @@ export const AssetTable = () => {
                        setIsPreviewOpen(true);
                      }}
                    >
-                    <TableCell className="font-medium text-muted-foreground">
-                      {startIndex + index + 1}
+                    <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
+                      UXD-{String(index + 1).padStart(3, '0')}
                     </TableCell>
-                    <TableCell className="font-medium">{asset.name}</TableCell>
                     <TableCell>{asset.category}</TableCell>
                     <TableCell>{asset.model}</TableCell>
-                    <TableCell className="font-mono text-sm">{asset.serialNumber}</TableCell>
                     <TableCell>{asset.assignedTo}</TableCell>
-                    <TableCell>{asset.location}</TableCell>
                     <TableCell>
                       <StatusBadge status={asset.status} />
                     </TableCell>
-                    <TableCell>{asset.repairingStatus && asset.repairingStatus !== "Not Applicable" ? asset.repairingStatus : "N/A"}</TableCell>
-                    <TableCell>{asset.vendor}</TableCell>
-                    <TableCell>{asset.extraItems ? "Yes" : "No"}</TableCell>
+                    <TableCell>{truncateDescription(asset.repairingDescription)}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -307,52 +296,6 @@ export const AssetTable = () => {
           </Table>
         </div>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredAndSortedAssets.length)} of {filteredAndSortedAssets.length} assets
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-medium">
-              Page {currentPage} of {totalPages}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+   </div>
   );
 };

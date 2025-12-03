@@ -11,6 +11,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -29,24 +53,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2 } from "lucide-react";
-import { addAsset, updateAsset, AssetInput, AssetData, RepairingStatus } from "@/services/assetService";
+import { Plus, Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { addAsset, updateAsset, AssetInput, AssetData, getMembers, addMember, deleteMember } from "@/services/assetService";
 import { toast } from "sonner";
 
 const assetSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
   category: z.string().min(1, "Category is required"),
   model: z.string().min(1, "Model is required").max(100),
-  serialNumber: z.string().min(1, "Serial number is required").max(100),
   assignedTo: z.string().min(1, "Assigned to is required").max(100),
-  location: z.string().min(1, "Location is required").max(200),
   status: z.enum(["Active", "Maintenance", "Retired", "Available"]),
-  vendor: z.string().min(1, "Vendor is required").max(100),
   description: z.string().optional(),
-  repairingStatus: z.enum(["Not Applicable", "Pending", "In Progress", "Completed"]).optional(),
   repairingDescription: z.string().optional(),
-  extraItems: z.boolean().default(false),
-  extraItemsDescription: z.string().optional(),
 });
 
 interface AddAssetDialogProps {
@@ -58,58 +75,80 @@ interface AddAssetDialogProps {
 export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [members, setMembers] = useState<string[]>([]);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [openPopover, setOpenPopover] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+
+  const loadMembers = async () => {
+    try {
+      const fetchedMembers = await getMembers();
+      setMembers(fetchedMembers);
+    } catch (error) {
+      console.error("Failed to load members:", error);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!newMemberName.trim()) return;
+    try {
+      await addMember(newMemberName.trim());
+      setNewMemberName("");
+      setIsAddMemberOpen(false);
+      loadMembers(); // Reload members
+      toast.success("Member added successfully");
+    } catch (error) {
+      toast.error("Failed to add member");
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+    try {
+      await deleteMember(memberToDelete);
+      setMemberToDelete(null);
+      loadMembers(); // Reload members
+      toast.success("Member deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete member");
+    }
+  };
+
+  useEffect(() => {
+    loadMembers();
+  }, []);
 
   const form = useForm<AssetInput>({
     resolver: zodResolver(assetSchema),
     defaultValues: {
-      name: "",
       category: "",
       model: "",
-      serialNumber: "",
       assignedTo: "",
-      location: "",
       status: "Available",
-      vendor: "",
       description: "",
-      repairingStatus: undefined,
       repairingDescription: "",
-      extraItems: false,
-      extraItemsDescription: "",
     },
   });
 
   useEffect(() => {
     if (asset) {
       form.reset({
-        name: asset.name,
         category: asset.category,
         model: asset.model,
-        serialNumber: asset.serialNumber,
         assignedTo: asset.assignedTo,
-        location: asset.location,
         status: asset.status,
-        vendor: asset.vendor,
         description: asset.description || "",
-        repairingStatus: asset.repairingStatus,
         repairingDescription: asset.repairingDescription || "",
-        extraItems: asset.extraItems || false,
-        extraItemsDescription: asset.extraItemsDescription || "",
       });
     } else {
       form.reset({
-        name: "",
         category: "",
         model: "",
-        serialNumber: "",
         assignedTo: "",
-        location: "",
         status: "Available",
-        vendor: "",
         description: "",
-        repairingStatus: undefined,
         repairingDescription: "",
-        extraItems: false,
-        extraItemsDescription: "",
       });
     }
   }, [asset, form]);
@@ -160,19 +199,6 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Dell Precision 5560" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
@@ -183,11 +209,12 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="max-h-172">
                         <SelectItem value="Laptop">Laptop</SelectItem>
                         <SelectItem value="Desktop">Desktop</SelectItem>
                         <SelectItem value="Server">Server</SelectItem>
                         <SelectItem value="Network Device">Network Device</SelectItem>
+                        <SelectItem value="Network Equipment">Network Equipment</SelectItem>
                         <SelectItem value="Peripheral">Peripheral</SelectItem>
                         <SelectItem value="Software">Software</SelectItem>
                         <SelectItem value="Keyboard">Keyboard</SelectItem>
@@ -195,6 +222,9 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
                         <SelectItem value="Headphone">Headphone</SelectItem>
                         <SelectItem value="Cable">Cable</SelectItem>
                         <SelectItem value="Phone">Phone</SelectItem>
+                        <SelectItem value="Mobile Device">Mobile Device</SelectItem>
+                        <SelectItem value="Printer">Printer</SelectItem>
+                        <SelectItem value="Monitor">Monitor</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -216,37 +246,11 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
               />
               <FormField
                 control={form.control}
-                name="serialNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serial Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="SN789456123" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="vendor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vendor</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Dell Technologies" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="status"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -269,22 +273,72 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assigned To</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="New York Office - Floor 3" {...field} />
-                    </FormControl>
+                    <div className="flex gap-2">
+                      <Popover open={openPopover} onOpenChange={setOpenPopover}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openPopover}
+                              className="flex-1 justify-between"
+                            >
+                              {field.value
+                                ? members.find((member) => member === field.value)
+                                : "Select member..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search member..." />
+                            <CommandList>
+                              <CommandEmpty>No member found.</CommandEmpty>
+                              <CommandGroup>
+                                {members.map((member) => (
+                                  <CommandItem
+                                    key={member}
+                                    value={member}
+                                    onSelect={() => {
+                                      field.onChange(member);
+                                      setOpenPopover(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${
+                                        member === field.value ? "opacity-100" : "opacity-0"
+                                      }`}
+                                    />
+                                    {member}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="ml-auto h-6 w-6 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMemberToDelete(member);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsAddMemberOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -309,66 +363,6 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
             />
             <FormField
               control={form.control}
-              name="extraItems"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Extra Items</FormLabel>
-                    <div className="text-sm text-muted-foreground">
-                      {field.value ? "Yes" : "No"}
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            {form.watch("extraItems") && (
-              <FormField
-                control={form.control}
-                name="extraItemsDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Describe the extra items..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="repairingStatus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Repairing Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select repairing status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Not Applicable">Not Applicable</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
               name="repairingDescription"
               render={({ field }) => (
                 <FormItem>
@@ -388,7 +382,13 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (asset) {
+                    onOpenChange?.(false);
+                  } else {
+                    setOpen(false);
+                  }
+                }}
                 disabled={isSubmitting}
               >
                 Cancel
@@ -401,6 +401,58 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
           </form>
         </Form>
       </DialogContent>
+
+      {/* Add Member Dialog */}
+      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Member</DialogTitle>
+            <DialogDescription>
+              Enter the name of the new member to add to the list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Member name"
+              value={newMemberName}
+              onChange={(e) => setNewMemberName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddMember();
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddMemberOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddMember} disabled={!newMemberName.trim()}>
+                Add Member
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Member Confirmation */}
+      <AlertDialog open={!!memberToDelete} onOpenChange={() => setMemberToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{memberToDelete}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMember}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
