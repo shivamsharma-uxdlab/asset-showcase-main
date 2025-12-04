@@ -53,8 +53,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, Check, ChevronsUpDown, X } from "lucide-react";
-import { addAsset, updateAsset, AssetInput, AssetData, getMembers, addMember, deleteMember } from "@/services/assetService";
+import { Plus, Loader2, Check, ChevronsUpDown, X, Edit } from "lucide-react";
+import { addAsset, updateAsset, AssetInput, AssetData, getMembers, addMember, deleteMember, updateMember } from "@/services/assetService";
 import { toast } from "sonner";
 
 const assetSchema = z.object({
@@ -80,6 +80,8 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
   const [newMemberName, setNewMemberName] = useState("");
   const [openPopover, setOpenPopover] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+  const [memberToEdit, setMemberToEdit] = useState<string | null>(null);
+  const [editMemberName, setEditMemberName] = useState("");
 
   const loadMembers = async () => {
     try {
@@ -100,6 +102,19 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
       toast.success("Member added successfully");
     } catch (error) {
       toast.error("Failed to add member");
+    }
+  };
+
+  const handleEditMember = async () => {
+    if (!memberToEdit || !editMemberName.trim()) return;
+    try {
+      await updateMember(memberToEdit, editMemberName.trim());
+      setMemberToEdit(null);
+      setEditMemberName("");
+      loadMembers(); // Reload members
+      toast.success("Member updated successfully");
+    } catch (error) {
+      toast.error("Failed to update member");
     }
   };
 
@@ -290,7 +305,7 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
+                        <PopoverContent className="w-[300px] p-0">
                           <Command>
                             <CommandInput placeholder="Search member..." />
                             <CommandList>
@@ -311,18 +326,33 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
                                       }`}
                                     />
                                     {member}
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="ml-auto h-6 w-6 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setMemberToDelete(member);
-                                      }}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                    <div className="ml-auto flex gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setMemberToEdit(member);
+                                          setEditMemberName(member);
+                                        }}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setMemberToDelete(member);
+                                        }}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -432,6 +462,42 @@ export const AddAssetDialog = ({ onAssetAdded, asset, onOpenChange }: AddAssetDi
               </Button>
               <Button onClick={handleAddMember} disabled={!newMemberName.trim()}>
                 Add Member
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={!!memberToEdit} onOpenChange={() => setMemberToEdit(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>
+              Update the name of the member.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Member name"
+              value={editMemberName}
+              onChange={(e) => setEditMemberName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleEditMember();
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMemberToEdit(null)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleEditMember} disabled={!editMemberName.trim()}>
+                Update Member
               </Button>
             </div>
           </div>

@@ -127,6 +127,7 @@ export const addMember = async (name: string): Promise<string> => {
     const docData = {
       name: name.trim(),
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
     const docRef = await addDoc(collection(db, MEMBERS_COLLECTION), docData);
     return docRef.id;
@@ -144,6 +145,24 @@ export const getMembers = async (): Promise<string[]> => {
     return querySnapshot.docs.map((doc) => doc.data().name as string);
   } catch (error) {
     console.error("Error fetching members:", error);
+    throw error;
+  }
+};
+
+export const updateMember = async (oldName: string, newName: string): Promise<void> => {
+  try {
+    const q = query(collection(db, MEMBERS_COLLECTION), where("name", "==", oldName));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const docRef = querySnapshot.docs[0].ref;
+      await updateDoc(docRef, {
+        name: newName.trim(),
+        updatedAt: Timestamp.now()
+      });
+    }
+  } catch (error) {
+    console.error("Error updating member:", error);
     throw error;
   }
 };

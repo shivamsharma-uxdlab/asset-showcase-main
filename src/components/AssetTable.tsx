@@ -248,7 +248,7 @@ export const AssetTable = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAndSortedAssets.map((asset, index) => (
+                filteredAndSortedAssets.map((asset) => (
                    <TableRow
                      key={asset.id}
                      className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -258,7 +258,7 @@ export const AssetTable = () => {
                      }}
                    >
                     <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
-                      UXD-{String(index + 1).padStart(3, '0')}
+                      UXD-{String(assets.indexOf(asset) + 1).padStart(3, '0')}
                     </TableCell>
                     <TableCell>{asset.category}</TableCell>
                     <TableCell>{asset.model}</TableCell>
